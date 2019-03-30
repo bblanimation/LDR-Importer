@@ -18,6 +18,9 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 
 import bpy
+from mathutils import *
+
+from ...functions.common import *
 
 
 def main(cur_obj, scale_val):
@@ -26,10 +29,6 @@ def main(cur_obj, scale_val):
     @param {Mesh} cur_obj - The individual model to process.
     @param {Number} scale_val - The amount a model should be scaled up or down.
     """
-    bpy.ops.object.select_all(action="DESELECT")
-    cur_obj.select = True
-    bpy.context.scene.objects.active = cur_obj
-
     # Compute the scale factor
     gap_width = 0.007
     obj_scale = cur_obj.scale * scale_val
@@ -41,18 +40,16 @@ def main(cur_obj, scale_val):
     # the dimension so that the mesh shrinks a fixed distance
     # (determined by the gap_width and the scale of the object)
     # in every direction, creating a uniform gap.
-    scale_fac = {"x": 1, "y": 1, "z": 1}
+    scale_fac = Vector((1, 1, 1))
 
     if dim.x != 0:
-        scale_fac["x"] = 1 - 2 * gap_width * abs(obj_scale.x) / dim.x
+        scale_fac.x = 1 - 2 * gap_width * abs(obj_scale.x) / dim.x
     if dim.y != 0:
-        scale_fac["y"] = 1 - 2 * gap_width * abs(obj_scale.y) / dim.y
+        scale_fac.y = 1 - 2 * gap_width * abs(obj_scale.y) / dim.y
     if dim.z != 0:
-        scale_fac["z"] = 1 - 2 * gap_width * abs(obj_scale.z) / dim.z
+        scale_fac.z = 1 - 2 * gap_width * abs(obj_scale.z) / dim.z
 
-    bpy.context.object.scale[0] *= scale_fac["x"]
-    bpy.context.object.scale[1] *= scale_fac["y"]
-    bpy.context.object.scale[2] *= scale_fac["z"]
+    cur_obj.scale = mathutils_mult(cur_obj.scale, scale_fac)
 
-    bpy.ops.object.transform_apply(scale=True)
-    bpy.ops.object.select_all(action="DESELECT")
+    apply_transform(cur_obj, scale=True)
+    deselectAll()

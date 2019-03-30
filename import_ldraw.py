@@ -17,16 +17,17 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 """
 
-
+# System imports
 import os
 import math
 import mathutils
 import traceback
 
+# Blender imports
 import bpy
-
 from bpy_extras.io_utils import ImportHelper
 
+# Addon imports
 from .src.ldcolors import Colors
 from .src.ldconsole import Console
 from .src.ldmaterials import Materials
@@ -34,13 +35,12 @@ from .src.ldprefs import Preferences
 from .src.extras import cleanup as Extra_Cleanup
 from .src.extras import gaps as Extra_Part_Gaps
 from .src.extras import linked_parts as Extra_Part_Linked
+from .functions.common import *
 
 # Global variables
 objects = []
 paths = []
 
-def b280():
-    return bpy.app.version >= (2,80,0)
 
 class LDrawFile(object):
     """Scans LDraw files."""
@@ -66,7 +66,7 @@ class LDrawFile(object):
 
         # Deselect all objects before import.
         # This prevents them from receiving any cleanup (if applicable).
-        bpy.ops.object.select_all(action='DESELECT')
+        deselectAll()
 
         if len(self.points) > 0 and len(self.faces) > 0:
             mesh = bpy.data.meshes.new("LDrawMesh")
@@ -99,7 +99,7 @@ class LDrawFile(object):
             objects.append(self.ob)
 
             # Link object to scene
-            bpy.context.scene.objects.link(self.ob)
+            link_object(self.ob)
 
         for i in self.subparts:
             self.submodels.append(LDrawFile(context, i[0], i[1], i[2],
@@ -116,7 +116,7 @@ class LDrawFile(object):
         num_points = int((len(line) - 2) / 3)
         for i in range(num_points):
                 self.points.append(
-                    (self.mat * mathutils.Vector((float(line[i * 3 + 2]),
+                     mathutils_mult(self.mat, mathutils.Vector((float(line[i * 3 + 2]),
                      float(line[i * 3 + 3]), float(line[i * 3 + 4])))).
                     to_tuple())
                 verts.append(len(self.points) - 1)
@@ -133,14 +133,14 @@ class LDrawFile(object):
         if color == '16':
             color = self.colour
 
-        v.append(self.mat * mathutils.Vector((float(line[0 * 3 + 2]),
-                 float(line[0 * 3 + 3]), float(line[0 * 3 + 4]))))
-        v.append(self.mat * mathutils.Vector((float(line[1 * 3 + 2]),
-                 float(line[1 * 3 + 3]), float(line[1 * 3 + 4]))))
-        v.append(self.mat * mathutils.Vector((float(line[2 * 3 + 2]),
-                 float(line[2 * 3 + 3]), float(line[2 * 3 + 4]))))
-        v.append(self.mat * mathutils.Vector((float(line[3 * 3 + 2]),
-                 float(line[3 * 3 + 3]), float(line[3 * 3 + 4]))))
+        v.append(mathutils_mult(self.mat, mathutils.Vector((float(line[0 * 3 + 2]),
+                 float(line[0 * 3 + 3]), float(line[0 * 3 + 4])))))
+        v.append(mathutils_mult(self.mat, mathutils.Vector((float(line[1 * 3 + 2]),
+                 float(line[1 * 3 + 3]), float(line[1 * 3 + 4])))))
+        v.append(mathutils_mult(self.mat, mathutils.Vector((float(line[2 * 3 + 2]),
+                 float(line[2 * 3 + 3]), float(line[2 * 3 + 4])))))
+        v.append(mathutils_mult(self.mat, mathutils.Vector((float(line[3 * 3 + 2]),
+                 float(line[3 * 3 + 3]), float(line[3 * 3 + 4])))))
 
         nA = (v[1] - v[0]).cross(v[2] - v[0])
         nB = (v[2] - v[1]).cross(v[3] - v[1])
@@ -213,26 +213,26 @@ class LDrawFile(object):
                             # track original orientation
                             # TODO Use corrected isPart logic
                             if self.part_count == 1 and is_top_part and LinkParts:  # noqa
-                                mat_new = self.mat * mathutils.Matrix((
+                                mat_new = mathutils_mult(self.mat, mathutils.Matrix((
                                     (1, 0, 0, 0),
                                     (0, 1, 0, 0),
                                     (0, 0, 1, 0),
                                     (0, 0, 0, 1)
-                                ))
-                                orientation = self.mat * mathutils.Matrix((
+                                )))
+                                orientation = mathutils_mult(self.mat, mathutils.Matrix((
                                     (a, b, c, x),
                                     (d, e, f, y),
                                     (g, h, i, z),
                                     (0, 0, 0, 1)
-                                )) * mathutils.Matrix.Rotation(
-                                    math.radians(90), 4, 'X')
+                                )), mathutils.Matrix.Rotation(
+                                    math.radians(90), 4, 'X'))
                             else:
-                                mat_new = self.mat * mathutils.Matrix((
+                                mat_new = mathutils_mult(self.mat, mathutils.Matrix((
                                     (a, b, c, x),
                                     (d, e, f, y),
                                     (g, h, i, z),
                                     (0, 0, 0, 1)
-                                ))
+                                )))
                                 orientation = None
                             color = tmpdate[1]
                             if color == '16':
@@ -262,6 +262,7 @@ class LDrawFile(object):
                     self.orientation = subfile[1]
                     subfile = subfiles.pop()
                     filename = subfile[0]
+                self.mat = subfile[1]
                 self.mat = subfile[1]
                 self.colour = subfile[2]
             else:
@@ -380,15 +381,14 @@ def create_model(self, context, scale):
             Extra_Part_Linked.main(objects)
 
         # Select all the mesh now that import is complete
-        for cur_obj in objects:
-            cur_obj.select = True
+        select(objects)
 
         # Update the scene with the changes
         context.scene.update()
         objects = []
 
         # Always reset 3D cursor to <0,0,0> after import
-        bpy.context.scene.cursor_location = (0.0, 0.0, 0.0)
+        set_cursor_location((0.0, 0.0, 0.0))
 
         # Display success message
         Console.log("{0} successfully imported!".format(fileName))
@@ -486,6 +486,12 @@ class IMPORT_SCENE_OT_ldraw(bpy.types.Operator, ImportHelper):
         default=prefs.get("linkParts", False)
     )
 
+    useABSPlastic = bpy.props.BoolProperty(
+        name="Use ABS Plastic Materials",
+        description="Automatically map ldr materials to ABS Plastic Materials if installed (available for purchase on the Blender Market)",
+        default=True,
+    )
+
     def draw(self, context):
         """Display import options."""
         layout = self.layout
@@ -501,6 +507,7 @@ class IMPORT_SCENE_OT_ldraw(bpy.types.Operator, ImportHelper):
         box.prop(self, "cleanUpParts", expand=True)
         box.prop(self, "addGaps")
         box.prop(self, "altColors")
+        box.prop(self, "useABSPlastic")
         box.prop(self, "lsynthParts")
 
     def execute(self, context):

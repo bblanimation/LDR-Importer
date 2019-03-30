@@ -20,6 +20,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 import bpy
 
 from .ldconsole import Console
+from ..functions import *
 
 
 __all__ = ("Materials")
@@ -43,10 +44,10 @@ class Materials:
 
     def make(self, code):
 
-        if self.__render_engine == "CYCLES":
-            return self.__get_cycles_material(code)
-        else:
+        if self.__render_engine == "BLENDER_INTERNAL":
             return self.__get_bi_materials(code)
+        else:
+            return self.__get_cycles_material(code)
 
     def get(self, code):
         """Get an individual material.
@@ -77,7 +78,7 @@ class Materials:
             # We have a direct color on our hands
             Console.log("Direct color {0} found".format(code))
             mat = bpy.data.materials.new("Mat_{0}".format(code))
-            mat.diffuse_color = col["value"]
+            mat.diffuse_color = (list(col["value"]) + [1]) if b280() else col["value"]
 
             # Add it to the material lists to avoid duplicate processing
             self.__set(code, mat)
@@ -88,7 +89,7 @@ class Materials:
             col = self.__ld_colors.get(code)
             mat = bpy.data.materials.new("Mat_{0}".format(code))
 
-            mat.diffuse_color = col["value"]
+            mat.diffuse_color = (list(col["value"]) + [1]) if b280() else col["value"]
 
             alpha = col["alpha"]
             if alpha < 1.0:
@@ -161,14 +162,20 @@ class Materials:
 
         # Valid LDraw color, generate the material
         else:
+            # import abs plastic materials if installed
+            if hasattr(bpy.ops, "abs") and hasattr(bpy.ops.abs, "append_materials"):
+                bpy.ops.abs.append_materials()
+
             col = self.__ld_colors.get(code)
 
             if col["name"] == "Milky_White":
                 mat = getCyclesMilkyWhite("Mat_{0}".format(code), col["value"])
 
             elif col["material"] == "BASIC" and col["luminance"] == 0:
-                mat = getCyclesBase("Mat_{0}".format(code),
-                                    col["value"], col["alpha"])
+                mat = getABSPlastic(col["name"])
+                if mat is None:
+                    mat = getCyclesBase("Mat_{0}".format(code),
+                                        col["value"], col["alpha"])
 
             elif col["luminance"] > 0:
                 mat = getCyclesEmit("Mat_{0}".format(code), col["value"],
@@ -188,8 +195,10 @@ class Materials:
                                       col["value"], col["alpha"])
 
             else:
-                mat = getCyclesBase("Mat_{0}".format(code),
-                                    col["value"], col["alpha"])
+                mat = getABSPlastic(col["name"])
+                if mat is None:
+                    mat = getCyclesBase("Mat_{0}".format(code),
+                                        col["value"], col["alpha"])
 
             self.__set(code, mat)
             return self.get(code)
@@ -198,6 +207,12 @@ class Materials:
         return None
 
 
+def getABSPlastic(name):
+    abs_mat_name = getABSMaterial(name)
+    return bpy.data.materials.get(abs_mat_name)
+
+
+@blender_version_wrapper("<=", "2.78")
 def getCyclesBase(name, diffColor, alpha):
     """Basic material colors for Cycles render engine."""
     mat = bpy.data.materials.new(name)
@@ -245,6 +260,34 @@ def getCyclesBase(name, diffColor, alpha):
     links.new(gloss.outputs[0], mix.inputs[2])
 
     return mat
+@blender_version_wrapper(">=", "2.79")
+def getCyclesBase(name, diffColor, alpha):
+    """Basic material colors for Cycles render engine."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    mat.diffuse_color = list(diffColor) + [alpha]
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+
+    if b280():
+        node = nodes.get("Principled BSDF")
+    else:
+        # Remove all previous nodes
+        for node in nodes:
+            nodes.remove(node)
+        node = nodes.new('ShaderNodeBsdfPrincipled')
+
+    node.inputs['Color'].default_value = diffColor + (1.0,)
+    node.inputs['Roughness'].default_value = 0.05
+    node.inputs['Transmission'].default_value = 0 if alpha == 1.0 else 1
+
+    if not b280():
+        links = mat.node_tree.links
+        out = nodes.new('ShaderNodeOutputMaterial')
+        links.new(node.outputs[0], out.inputs[0])
+
+    return mat
 
 
 def getCyclesEmit(name, diff_color, alpha, luminance):
@@ -284,11 +327,12 @@ def getCyclesEmit(name, diff_color, alpha, luminance):
     return mat
 
 
+@blender_version_wrapper("<=", "2.78")
 def getCyclesChrome(name, diffColor):
     """Chrome material colors for Cycles render engine."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
-    mat.diffuse_color = diffColor
+    mat.diffuse_color = (list(diffColor) + [1]) if b280() else diffColor
 
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
@@ -320,13 +364,40 @@ def getCyclesChrome(name, diffColor):
     links.new(glossTwo.outputs[0], mix.inputs[2])
 
     return mat
+@blender_version_wrapper(">=", "2.79")
+def getCyclesChrome(name, diffColor):
+    """Chrome material colors for Cycles render engine."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    mat.diffuse_color = (list(diffColor) + [1]) if b280() else diffColor
+
+    nodes = mat.node_tree.nodes
+
+    if b280():
+        node = nodes.get("Principled BSDF")
+    else:
+        # Remove all previous nodes
+        for node in nodes:
+            nodes.remove(node)
+        node = nodes.new('ShaderNodeBsdfPrincipled')
+
+    node.inputs['Color'].default_value = diffColor + (1.0,)
+    node.inputs['Roughness'].default_value = 0.03
+    node.inputs['Metallic'].default_value = 1.0
+
+    if not b280():
+        links = mat.node_tree.links
+        out = nodes.new('ShaderNodeOutputMaterial')
+        links.new(node.outputs[0], out.inputs[0])
+
+    return mat
 
 
 def getCyclesPearlMetal(name, diffColor):
     """Pearlescent material colors for Cycles render engine."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
-    mat.diffuse_color = diffColor
+    mat.diffuse_color = (list(diffColor) + [1]) if b280() else diffColor
 
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
@@ -364,7 +435,7 @@ def getCyclesRubber(name, diffColor, alpha):
     """Rubber material colors for Cycles render engine."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
-    mat.diffuse_color = diffColor
+    mat.diffuse_color = (list(diffColor) + [alpha]) if b280() else diffColor
 
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links

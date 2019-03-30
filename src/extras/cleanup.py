@@ -19,6 +19,8 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 import bpy
 
+from ...functions.common import *
+
 
 def main(cur_obj, link_parts):
     """Perform basic model cleanup procedures.
@@ -33,8 +35,8 @@ def main(cur_obj, link_parts):
     @param {Mesh} cur_obj - The individual model to process.
     @param {Boolean} link_parts - True if Linked Parts option is enabled.
     """
-    cur_obj.select = True
-    bpy.context.scene.objects.active = cur_obj
+    select(cur_obj)
+    setActiveObj(cur_obj)
 
     if bpy.ops.object.mode_set.poll():
         bpy.ops.object.mode_set(mode='EDIT')

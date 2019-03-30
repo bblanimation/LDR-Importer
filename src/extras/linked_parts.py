@@ -19,6 +19,8 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 import bpy
 
+from ...functions.common import *
+
 
 __all__ = ("main")
 
@@ -45,9 +47,9 @@ def replace_parts(objects, part, material):
                     # Following occurrences of part, link to mesh.
                     else:
                         ob.data = mesh
-                    ob.select = True
+                    select(ob)
         else:
-            ob.select = False
+            deselect(ob)
 
     # Change mesh name in combination of .dat-filename and material.
     if mesh is not None:

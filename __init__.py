@@ -22,6 +22,7 @@ import bpy
 
 # Addon imports
 from . import import_ldraw
+from .functions.common import *
 
 bl_info = {
     "name": "LDR Importer",
@@ -42,23 +43,6 @@ def menuImport(self, context):
     """Import menu listing label."""
     self.layout.operator(import_ldraw.IMPORT_SCENE_OT_ldraw.bl_idname,
                          text="LDraw (.ldr/.dat)")
-
-def make_annotations(cls):
-	"""Add annotation attribute to class fields to avoid Blender 2.8 warnings"""
-	if not hasattr(bpy.app, "version") or bpy.app.version < (2, 80):
-		return cls
-	bl_props = {k: v for k, v in cls.__dict__.items() if isinstance(v, tuple)}
-	if bl_props:
-		if '__annotations__' not in cls.__dict__:
-			setattr(cls, '__annotations__', {})
-		annotations = cls.__dict__['__annotations__']
-		for k, v in bl_props.items():
-			annotations[k] = v
-			delattr(cls, k)
-	return cls
-
-def b280():
-    return bpy.app.version >= (2,80,0)
 
 classes = [import_ldraw.IMPORT_SCENE_OT_ldraw]
 
