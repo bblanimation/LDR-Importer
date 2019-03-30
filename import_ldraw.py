@@ -336,10 +336,8 @@ def create_model(self, context, scale):
     # Recommended: http://ghost.kirk.by/file-extensions-are-only-hints
     if fileName[-4:].lower() not in (".ldr", ".dat"):
 
-        Console.log('''ERROR: Reason: Invalid File Type
-Must be a .ldr or .dat''')
-        self.report({'ERROR'}, '''Error: Invalid File Type
-Must be a .ldr or .dat''')
+        Console.log('ERROR: Reason: Invalid File Type\nMust be a .ldr or .dat')
+        self.report({'ERROR'}, 'Error: Invalid File Type\nMust be a .ldr or .dat')
         return {'ERROR'}
 
     # It has the proper file extension, continue with the import
@@ -357,10 +355,8 @@ Must be a .ldr or .dat''')
 
         # If LDrawDir does not exist, stop the import
         if not os.path.isdir(LDrawDir):  # noqa
-            Console.log(''''ERROR: Cannot find LDraw installation at
-{0}'''.format(LDrawDir))  # noqa
-            self.report({'ERROR'}, '''Cannot find LDraw installation at
-{0}'''.format(LDrawDir))  # noqa
+            Console.log('ERROR: Cannot find LDraw installation at\n{0}'.format(LDrawDir))  # noqa
+            self.report({'ERROR'}, 'Cannot find LDraw installation at\n{0}'.format(LDrawDir))  # noqa
             return {'CANCELLED'}
 
         # Instance the colors module and

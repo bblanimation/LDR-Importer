@@ -49,7 +49,6 @@ class Console:
 
         @param {Tuple} msg The message to be displayed.
         """
-        return
         print(Console.__makeMessage(msg))
 
     @staticmethod

@@ -44,6 +44,7 @@ class Preferences:
             "mac": [
                 "/Applications/LDraw/",
                 "/Applications/ldraw/",
+                "/Applications/bricksmith/ldraw/",
             ],
             "linux": [
                 os.path.expanduser("~/LDraw"),
