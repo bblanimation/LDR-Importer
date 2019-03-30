@@ -39,6 +39,8 @@ from .src.extras import linked_parts as Extra_Part_Linked
 objects = []
 paths = []
 
+def b280():
+    return bpy.app.version >= (2,80,0)
 
 class LDrawFile(object):
     """Scans LDraw files."""
@@ -411,15 +413,14 @@ Check the console logs for more information.'''.format(type(e).__name__))
 # ------------ Operator ------------ #
 
 
-class LDRImporterOps(bpy.types.Operator, ImportHelper):
+class IMPORT_SCENE_OT_ldraw(bpy.types.Operator, ImportHelper):
     """LDR Importer Import Operator."""
-
-    bl_idname = "import_scene.ldraw"
-    bl_description = "Import an LDraw model (.ldr/.dat)"
-    bl_label = "Import LDraw Model"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
-    bl_options = {'REGISTER', 'UNDO', 'PRESET'}
+    bl_label = "Import LDraw Model"
+    bl_idname = "import_scene.ldraw"
+    bl_description = "Import an LDraw model (.ldr/.dat)"
+    bl_options = {'UNDO', 'PRESET'}
 
     # Instance the preferences system
     prefs = Preferences()
@@ -493,13 +494,13 @@ class LDRImporterOps(bpy.types.Operator, ImportHelper):
         """Display import options."""
         layout = self.layout
         box = layout.box()
-        box.label("Import Options", icon="SCRIPTWIN")
-        box.label("LDraw Parts Library", icon="FILESEL")
+        box.label(text="Import Options", icon="PREFERENCES" if b280() else "SCRIPTWIN")
+        box.label(text="LDraw Parts Library", icon="FILEBROWSER" if b280() else "FILESEL")
         box.prop(self, "ldrawPath")
         box.prop(self, "importScale")
-        box.label("Primitives", icon="MOD_BUILD")
+        box.label(text="Primitives", icon="MOD_BUILD")
         box.prop(self, "resPrims", expand=True)
-        box.label("Additional Options", icon="PREFERENCES")
+        box.label(text="Additional Options", icon="PREFERENCES")
         box.prop(self, "linkParts")
         box.prop(self, "cleanUpParts", expand=True)
         box.prop(self, "addGaps")
